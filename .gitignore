@@ -1,0 +1,15 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/caches/
+/.idea/libraries/
+/.idea/workspace.xml
+/.idea/tasks.xml
+/.idea/shelf/
+.DS_Store
+/build/
+/app/build/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
