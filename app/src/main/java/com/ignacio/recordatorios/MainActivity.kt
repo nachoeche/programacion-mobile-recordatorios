@@ -1,57 +1,75 @@
 package com.ignacio.recordatorios
 
 import android.os.Bundle
+import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
-import android.content.Context
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.google.firebase.auth.FirebaseAuth
 import com.ignacio.recordatorios.data.RepositoryProvider
 import com.ignacio.recordatorios.ui.*
 import com.ignacio.recordatorios.ui.theme.RecordatoriosTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    private var manager: ConnectivityManager? = null
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var connection: ConnectivityManager? = null
+    private var callback: ConnectivityManager.NetworkCallback? = null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Optional automatic retry when the device reconnects. Room remains authoritative.
-        manager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val callback = object : ConnectivityManager.NetworkCallback() {
+        connection = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        callback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
-                lifecycleScope.launch { RepositoryProvider.repository(applicationContext).sync() }
+                val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
+                lifecycleScope.launch { RepositoryProvider.repository(applicationContext, uid).sync() }
+            }
+        }.also { connection?.registerDefaultNetworkCallback(it) }
+        setContent {
+            val authVm: AuthViewModel = viewModel()
+            val auth by authVm.state.collectAsStateWithLifecycle()
+            when (val a = auth) {
+                AuthUiState.Loading -> CircularProgressIndicator()
+                AuthUiState.SignedOut -> AuthScreen(authVm)
+                is AuthUiState.Error -> AuthScreen(authVm, a.message)
+                is AuthUiState.SignedIn -> key(a.uid) {
+                    // A new user gets a new navigation stack and new ViewModels.
+                    // The Room database is also isolated by UID.
+                    UserReminderApp(a.uid, a.email, authVm)
+                }
             }
         }
-        networkCallback = callback
-        manager?.registerDefaultNetworkCallback(callback)
-        setContent { ReminderApp() }
     }
     override fun onDestroy() {
-        networkCallback?.let { manager?.unregisterNetworkCallback(it) }
+        callback?.let { connection?.unregisterNetworkCallback(it) }
         super.onDestroy()
     }
-    @Composable private fun ReminderApp() {
+    @Composable private fun UserReminderApp(uid: String, email: String, authVm: AuthViewModel) {
         val nav = rememberNavController()
-        val repo = remember { RepositoryProvider.repository(applicationContext) }
+        val repo = remember(uid) { RepositoryProvider.repository(applicationContext, uid) }
         val prefs = remember { RepositoryProvider.preferences(applicationContext) }
-        val settingsVm: SettingsViewModel = viewModel(factory = SettingsViewModel.factory(prefs))
+        val settingsVm: SettingsViewModel = viewModel(key = "settings-$uid", factory = SettingsViewModel.factory(prefs))
         val options by settingsVm.state.collectAsStateWithLifecycle()
-        val listVm: ReminderListViewModel = viewModel(factory = ReminderListViewModel.factory(repo, prefs))
+        val listVm: ReminderListViewModel = viewModel(key = "list-$uid", factory = ReminderListViewModel.factory(repo, prefs))
+        LaunchedEffect(uid) { repo.sync() }
         RecordatoriosTheme(darkTheme = options.darkMode) {
             NavHost(navController = nav, startDestination = "list") {
                 composable("list") {
-                    ReminderScreen(listVm, onCrearRecordatorio = { nav.navigate("create") },
-                        onRecordatorioClick = { nav.navigate("detail/$it") }, onSettings = { nav.navigate("settings") })
+                    androidx.compose.foundation.layout.Column {
+                        androidx.compose.material3.Text("Cuenta: $email")
+                        androidx.compose.material3.TextButton(onClick = authVm::logout) { androidx.compose.material3.Text("Cerrar sesión") }
+                        ReminderScreen(listVm, onCrearRecordatorio = { nav.navigate("create") },
+                            onRecordatorioClick = { nav.navigate("detail/$it") }, onSettings = { nav.navigate("settings") })
+                    }
                 }
                 composable("settings") { SettingsScreen(settingsVm) { nav.popBackStack() } }
                 composable("create") { entry ->

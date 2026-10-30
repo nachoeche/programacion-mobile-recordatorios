@@ -9,10 +9,13 @@ import androidx.room.RoomDatabase
 abstract class ReminderDatabase : RoomDatabase() {
     abstract fun reminderDao(): ReminderDao
     companion object {
-        @Volatile private var instance: ReminderDatabase? = null
-        fun get(context: Context): ReminderDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext, ReminderDatabase::class.java,
-                "recordatorios.db").build().also { instance = it }
+        private val instances = mutableMapOf<String, ReminderDatabase>()
+        fun forUser(context: Context, uid: String): ReminderDatabase = synchronized(this) {
+            require(uid.matches(Regex("[A-Za-z0-9_-]{1,128}"))) { "Identificador de cuenta invalido" }
+            instances.getOrPut(uid) {
+                Room.databaseBuilder(context.applicationContext, ReminderDatabase::class.java,
+                    "recordatorios-user-$uid.db").build()
+            }
         }
     }
 }

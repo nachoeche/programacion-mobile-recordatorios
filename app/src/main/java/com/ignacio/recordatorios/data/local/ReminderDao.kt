@@ -26,6 +26,9 @@ interface ReminderDao {
     @Update suspend fun update(entity: ReminderEntity)
     @Delete suspend fun delete(entity: ReminderEntity)
 
+    @Query("SELECT * FROM reminders WHERE clientKey = :key LIMIT 1")
+    suspend fun byClientKey(key: String): ReminderEntity?
+
     @Query("SELECT MAX(id) FROM reminders")
     suspend fun maxId(): Int?
 }

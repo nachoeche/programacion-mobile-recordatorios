@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "954137917145",
+    "project_id": "programobile-recordatorios",
+    "storage_bucket": "programobile-recordatorios.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:954137917145:android:7d00380147c437f0cbb0c8",
+        "android_client_info": {
+          "package_name": "com.ignacio.recordatorios"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFRo_SC9gIH1_MgByCqIV4wNLdG3ki9q4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
