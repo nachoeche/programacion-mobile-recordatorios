@@ -12,35 +12,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReminderScreen(
-    viewModel: ReminderListViewModel,
-    onCrearRecordatorio: () -> Unit,
-    onRecordatorioClick: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun ReminderScreen(viewModel: ReminderListViewModel, onCrearRecordatorio: () -> Unit,
+    onRecordatorioClick: (Int) -> Unit, onSettings: () -> Unit, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Mis recordatorios") }) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onCrearRecordatorio) { Text("+") }
-        }
-    ) { padding ->
+    val syncMessage by viewModel.syncMessage.collectAsStateWithLifecycle()
+    Scaffold(topBar = { TopAppBar(title = { Text("Mis recordatorios") }, actions = {
+        TextButton(onClick = onSettings) { Text("Ajustes") }
+    }) }, floatingActionButton = { FloatingActionButton(onClick = onCrearRecordatorio) { Text("+") } }) { padding ->
         Column(modifier.fillMaxSize().padding(padding)) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                TextButton(onClick = viewModel::simulateEmpty) { Text("Probar vacío") }
-                TextButton(onClick = viewModel::simulateError) { Text("Probar error") }
+            Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                TextButton(onClick = viewModel::simulateEmpty) { Text("Vacío") }
+                TextButton(onClick = viewModel::simulateError) { Text("Error") }
                 TextButton(onClick = viewModel::load) { Text("Restaurar") }
+                TextButton(onClick = viewModel::sync) { Text("Sync") }
             }
+            syncMessage?.let { Text(it, Modifier.padding(horizontal = 16.dp)) }
             when (val s = state) {
-                ReminderListUiState.Loading -> {
-                    CircularProgressIndicator(Modifier.padding(24.dp))
-                    Text("Cargando recordatorios...", Modifier.padding(horizontal = 24.dp))
-                }
-                ReminderListUiState.Empty -> StatusMessage(
-                    "Todavía no hay recordatorios.", "Crear recordatorio", onCrearRecordatorio)
-                is ReminderListUiState.Error -> StatusMessage(
-                    s.message, "Reintentar", viewModel::load)
+                ReminderListUiState.Loading -> CircularProgressIndicator(Modifier.padding(24.dp))
+                ReminderListUiState.Empty -> StatusMessage("Todavía no hay recordatorios.", "Crear recordatorio", onCrearRecordatorio)
+                is ReminderListUiState.Error -> StatusMessage(s.message, "Reintentar", viewModel::load)
                 is ReminderListUiState.Data -> {
                     Text("${s.reminders.size} recordatorios registrados", Modifier.padding(16.dp))
                     LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),

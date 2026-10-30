@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.legacy.kapt)
 }
 
 android {
@@ -33,10 +34,22 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    defaultConfig {
+        val remoteBaseUrl = providers.gradleProperty("API_BASE_URL").orElse("https://jsonplaceholder.typicode.com/").get()
+        buildConfigField("String", "API_BASE_URL", "\"$remoteBaseUrl\"")
     }
 }
 
 dependencies {
+    implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.room:room-ktx:2.8.4")
+    kapt("androidx.room:room-compiler:2.8.4")
+    implementation("androidx.datastore:datastore-preferences:1.2.0")
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.navigation:navigation-compose:2.10.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
