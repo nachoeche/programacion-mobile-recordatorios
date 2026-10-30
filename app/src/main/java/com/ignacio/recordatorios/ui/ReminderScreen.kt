@@ -1,125 +1,56 @@
-
 package com.ignacio.recordatorios.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-import com.ignacio.recordatorios.data.SampleData
-import com.ignacio.recordatorios.model.Priority
-import com.ignacio.recordatorios.model.Reminder
-import com.ignacio.recordatorios.model.ReminderStatus
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReminderScreen() {
-
-    val reminders = SampleData.reminders
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        Text(
-            text = "Mis recordatorios",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "${reminders.size} recordatorios registrados",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(
-                items = reminders,
-                key = { it.id }
-            ) { reminder ->
-                ReminderCard(reminder)
+fun ReminderScreen(
+    viewModel: ReminderListViewModel,
+    onCrearRecordatorio: () -> Unit,
+    onRecordatorioClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("Mis recordatorios") }) },
+        floatingActionButton = {
+            FloatingActionButton(onClick = onCrearRecordatorio) { Text("+") }
+        }
+    ) { padding ->
+        Column(modifier.fillMaxSize().padding(padding)) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TextButton(onClick = viewModel::simulateEmpty) { Text("Probar vacío") }
+                TextButton(onClick = viewModel::simulateError) { Text("Probar error") }
+                TextButton(onClick = viewModel::load) { Text("Restaurar") }
+            }
+            when (val s = state) {
+                ReminderListUiState.Loading -> {
+                    CircularProgressIndicator(Modifier.padding(24.dp))
+                    Text("Cargando recordatorios...", Modifier.padding(horizontal = 24.dp))
+                }
+                ReminderListUiState.Empty -> StatusMessage(
+                    "Todavía no hay recordatorios.", "Crear recordatorio", onCrearRecordatorio)
+                is ReminderListUiState.Error -> StatusMessage(
+                    s.message, "Reintentar", viewModel::load)
+                is ReminderListUiState.Data -> {
+                    Text("${s.reminders.size} recordatorios registrados", Modifier.padding(16.dp))
+                    LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(s.reminders, key = { it.id }) { reminder ->
+                            ReminderCard(reminder, onClick = { onRecordatorioClick(reminder.id) })
+                        }
+                    }
+                }
             }
         }
-    }
-}
-
-@Composable
-fun ReminderCard(reminder: Reminder) {
-
-    val categoryColor = SampleData.categoryColors[
-        reminder.category.name
-    ]?.let { Color(it) } ?: Color.Gray
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = 3.dp
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-
-            Text(
-                text = reminder.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = reminder.category.name,
-                    color = categoryColor
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Prioridad: ${priorityLabel(reminder.priority)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-
-            Text(
-                text = "Estado: ${statusLabel(reminder.status)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-    }
-}
-
-private fun priorityLabel(priority: Priority): String {
-    return when (priority) {
-        Priority.Low -> "Baja"
-        Priority.Medium -> "Media"
-        Priority.High -> "Alta"
-    }
-}
-
-private fun statusLabel(status: ReminderStatus): String {
-    return when (status) {
-        ReminderStatus.Pending -> "Pendiente"
-        ReminderStatus.InProgress -> "En progreso"
-        ReminderStatus.Completed -> "Completado"
     }
 }
